@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sorteador de Frutas — Tekiosei</title>
+<style>
+body { font-family: sans-serif; background: #f9f9f9; padding: 20px; }
+.container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+input, button { padding: 10px; margin: 5px 0; font-size: 1em; }
+button { cursor: pointer; }
+table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+th, td { border: 1px solid #ccc; padding: 5px; text-align: left; }
+th { background: #eee; }
+.result { margin-top: 10px; padding: 10px; background: #e0ffe0; border-radius: 5px; }
+.error { color: red; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Sorteador de Frutas — Tekiosei</h1>
+<p>Digite o <strong>nome e sobrenome do aluno</strong> em maiúsculo e aperte Sortear.</p>
+
+<input type="text" id="studentName" placeholder="NOME E SOBRENOME DO ALUNO">
+<button onclick="drawFruit()">Sortear</button>
+<div id="error" class="error"></div>
+<div id="result" class="result"></div>
+
+<h3>Área administrativa</h3>
+<p>Digite senha para ver o histórico:</p>
+<input type="password" id="adminPass" placeholder="Senha administrativa">
+<button onclick="loginAdmin()">Entrar</button>
+
+<div id="adminArea" style="display:none;">
+<button onclick="exportCSV()">Exportar CSV</button>
+<button onclick="clearAll()">Apagar tudo</button>
+<table id="historyTable">
+<thead><tr><th>Nome</th><th>Fruta</th><th>Data</th></tr></thead>
+<tbody></tbody>
+</table>
+</div>
+</div>
+
+<script>
+const fruits = ["Banana","Manga","Maçã","Pera","Uva","Morango","Mamão","Melão","Kiwi","Melancia"];
+const assignments = [];
+const adminPassword = "tekiosei123"; // você pode mudar a senha
+
+function drawFruit() {
+  const nameInput = document.getElementById("studentName");
+  const name = nameInput.value.trim().toUpperCase();
+  const errorDiv = document.getElementById("error");
+  const resultDiv = document.getElementById("result");
+  errorDiv.innerText = "";
+  resultDiv.innerText = "";
+
+  if(!name) { errorDiv.innerText="Digite o nome e sobrenome do aluno."; return; }
+  if(assignments.some(a => a.name === name)) { errorDiv.innerText="Este aluno já fez o sorteio."; return; }
+
+  // cálculo simples para não repetir muito a fruta
+  const counts = {};
+  fruits.forEach(f => counts[f]=0);
+  assignments.forEach(a => counts[a.fruit]++);
+  const weights = fruits.map(f => 1/(counts[f]+1));
+  const sum = weights.reduce((a,b)=>a+b,0);
+  let r = Math.random()*sum;
+  let chosen;
+  for(let i=0;i<fruits.length;i++){
+    r -= weights[i];
+    if(r<=0){ chosen=fruits[i]; break; }
+  }
+  if(!chosen) chosen = fruits[fruits.length-1];
+
+  const entry = {name: name, fruit: chosen, date: new Date().toLocaleString()};
+  assignments.push(entry);
+  resultDiv.innerHTML = `<strong>${name}</strong>, sua fruta é: <strong>${chosen}</strong>`;
+  nameInput.value="";
+}
+
+function loginAdmin() {
+  const pass = document.getElementById("adminPass").value;
+  if(pass === adminPassword){
+    document.getElementById("adminArea").style.display="block";
+    renderHistory();
+  } else {
+    alert("Senha incorreta!");
+  }
+}
+
+function renderHistory() {
+  const tbody = document.getElementById("historyTable").querySelector("tbody");
+  tbody.innerHTML = "";
+  assignments.forEach(a => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${a.name}</td><td>${a.fruit}</td><td>${a.date}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function exportCSV() {
+  let csv = "Nome,Fruta,Data\\n";
+  assignments.forEach(a => csv += `${a.name},${a.fruit},${a.date}\\n`);
+  const blob = new Blob([csv], {type:"text/csv"});
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "historico_frutas.csv";
+  link.click();
+}
+
+function clearAll() {
+  if(confirm("Tem certeza que quer apagar todos os registros?")){
+    assignments.length=0;
+    renderHistory();
+  }
+}
+</script>
+</body>
+</html>
